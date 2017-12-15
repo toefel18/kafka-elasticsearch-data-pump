@@ -7,8 +7,10 @@ import java.util.Optional;
  */
 public class TopicElasticsearchMapping {
     public String topic;
-    public String elasticsearchUrl;
+    public String elasticsearchIndex;
+    public String elasticsearchType;
     public String elasticsearchIdStrategy;
-    public Optional<IdFromFieldInMessageKeyStrategy> fromField;
+    public Optional<IdFromFieldInMessageKeyStrategy> idFromField;
+    public Boolean configureTimestampInType;
 
 }

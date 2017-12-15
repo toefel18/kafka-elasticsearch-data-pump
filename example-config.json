@@ -1,0 +1,49 @@
+{
+  "elasticsearchServer": "127.0.0.1:9200",
+  "kafkaBootstrapServers": "localhost:9092",
+  "kafkaConsumerGroupId": "some-random-id-16",
+  "topicMappings": [
+    {
+      "topic": "data-pump-tester",
+      "elasticsearchIndex": "kafka-topics-data-pump-tester",
+      "elasticsearchType": "data-pump-tester",
+      "elasticsearchIdStrategy": "random",
+      "configureTimestampInType": true
+    },
+    {
+      "topic": "flow-unit-status",
+      "elasticsearchIndex": "kafka-topics-flow-unit-status",
+      "elasticsearchType": "flow-unit-status",
+      "elasticsearchIdStrategy": "random",
+      "configureTimestampInType": true
+    },
+    {
+      "topic": "flow-trip-mutations",
+      "elasticsearchIndex": "kafka-topics-flow-trip-mutations",
+      "elasticsearchType": "flow-trip-mutations",
+      "elasticsearchIdStrategy": "random",
+      "configureTimestampInType": true
+    },
+    {
+      "topic": "flow-to-be-planned-shipments",
+      "elasticsearchIndex": "kafka-topics-flow-to-be-planned-shipments",
+      "elasticsearchType": "flow-to-be-planned-shipments",
+      "elasticsearchIdStrategy": "random",
+      "configureTimestampInType": true
+    },
+    {
+      "topic": "flow-loaded-trips",
+      "elasticsearchIndex": "kafka-topics-flow-loaded-trips",
+      "elasticsearchType": "flow-loaded-trips",
+      "elasticsearchIdStrategy": "random",
+      "configureTimestampInType": true
+    },
+    {
+      "topic": "flow-released-trips",
+      "elasticsearchIndex": "kafka-topics-flow-released-trips",
+      "elasticsearchType": "flow-released-trips",
+      "elasticsearchIdStrategy": "random",
+      "configureTimestampInType": true
+    }
+  ]
+}

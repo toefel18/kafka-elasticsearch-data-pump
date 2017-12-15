@@ -8,6 +8,9 @@ module nl.toefel.kafka.elasticsearch.pump {
     requires com.fasterxml.jackson.module.paramnames;
     requires com.fasterxml.jackson.core;
     requires jdk.incubator.httpclient;
+    requires patan;
+    requires jackson.annotations;
 
     exports nl.toefel.kafka.elasticsearch.pump;
+    exports nl.toefel.kafka.elasticsearch.pump.config;
 }
