@@ -1,7 +1,7 @@
 package nl.toefel.kafka.elasticsearch.pump;
 
 import nl.toefel.kafka.elasticsearch.pump.config.Config;
-import nl.toefel.kafka.elasticsearch.pump.config.TopicElasticsearchMapping;
+import nl.toefel.kafka.elasticsearch.pump.http.RestApiServer;
 import nl.toefel.kafka.elasticsearch.pump.json.Jsonizer;
 
 import java.io.IOException;
@@ -14,19 +14,20 @@ import java.nio.file.Paths;
  */
 public class Main {
 
-    public static final Path cfgPath = Paths.get(System.getProperty("user.home"), ".kafka-elasticsearch-data-pump", "config.json");
-
     public static void main(String[] args) throws IOException {
         Config cfg = Config.newEmpty();
-        if (Files.exists(cfgPath)) {
-            cfg = Jsonizer.fromJson(Files.readAllBytes(cfgPath), Config.class);
+        if (Files.exists(Config.CONFIG_PATH)) {
+            cfg = Jsonizer.fromJson(Files.readAllBytes(Config.CONFIG_PATH), Config.class);
         }
-        printConfig(cfg);
+
         ConfigurableStreams streams = new ConfigurableStreams();
-        streams.reconfigureStreams(cfg);
+        RestApiServer srv = new RestApiServer(streams);
+        srv.start();
+        try {
+            streams.reconfigureStreamsOrWait(cfg);
+        } catch (Exception e) {
+            System.out.println(e);
+        }
     }
 
-    private static void printConfig(Config cfg) {
-        System.out.println("Using config: \n" + Jsonizer.toJsonFormatted(cfg));
-    }
 }

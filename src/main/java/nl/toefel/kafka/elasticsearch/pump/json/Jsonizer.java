@@ -1,11 +1,14 @@
 package nl.toefel.kafka.elasticsearch.pump.json;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 
 /**
@@ -17,11 +20,22 @@ public class Jsonizer {
 
     static {
         objectMapper = new ObjectMapper();
+        objectMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         objectMapper.findAndRegisterModules();
     }
 
     public static ObjectWriter writer(boolean format) {
         return format ? objectMapper.writerWithDefaultPrettyPrinter() : objectMapper.writer();
+    }
+
+
+    public static <T> T fromJson(InputStream json, Class<T> clazz) {
+        try {
+            return objectMapper.readValue(json, clazz);
+        } catch (IOException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
     public static <T> T fromJson(byte[] json, Class<T> clazz) {

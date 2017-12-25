@@ -8,19 +8,24 @@ import nl.toefel.kafka.elasticsearch.pump.config.TopicElasticsearchMapping;
 import nl.toefel.kafka.elasticsearch.pump.json.Jsonizer;
 import nl.toefel.patan.StatisticsFactory;
 import nl.toefel.patan.api.Statistics;
+import nl.toefel.patan.api.Stopwatch;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.*;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author Christophe Hesters
@@ -29,19 +34,54 @@ public class ConfigurableStreams {
 
     private static final String TYPE_CONFIG = "{\"mappings\":{\"${TYPE}\":{\"properties\":{\"timestamp\":{\"type\":\"date\"}}}}}";
 
-    private final Statistics stats = StatisticsFactory.createThreadsafeStatistics();
+    public static final Statistics STATS = StatisticsFactory.createThreadsafeStatistics();
     private final HttpClient http = HttpClient.newHttpClient();
     private KafkaStreams activeStreams;
+    private Lock lock = new ReentrantLock();
+    private Topology topology = null;
+    private Config config = Config.newEmpty();
 
-    public void reconfigureStreams(Config config) {
+    /**
+     * Reconfigures the streams without waiting if a reconfiguration is already in progress.
+     * @param config
+     * @return true if successful, false if a reconfiguration was already in progress.
+     */
+    public boolean reconfigureStreamsOrCancel(Config config) {
+        if (lock.tryLock()) {
+            try {
+                reconfigureStreamsImpl(config);
+                return true;
+            } finally {
+                lock.unlock();
+            }
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Reconfigures the streams or waits until streams is ready if a configuration is already in progress.
+     * @param config
+     */
+    public void reconfigureStreamsOrWait(Config config) {
+        lock.lock();
+        try {
+            reconfigureStreamsImpl(config);
+        }finally {
+            lock.unlock();
+        }
+    }
+
+    private void reconfigureStreamsImpl(Config config) {
+        System.out.println("Using config: \n" + Jsonizer.toJsonFormatted(config));
         if (!config.isValid()) {
             System.out.println("Not altering config due to invalid parameters");
-            return;
         }
         if (activeStreams != null) {
             System.out.println("Closing active streams");
             activeStreams.close();
         }
+        this.config = config;
         Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, config.kafkaConsumerGroupId);
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, config.kafkaBootstrapServers);
@@ -57,14 +97,26 @@ public class ConfigurableStreams {
                     .foreach((key, val) -> onRecord(String.valueOf(key), val, mapping, config));
         });
 
-        Topology topology = builder.build();
+        topology = builder.build();
         System.out.println(topology.describe());
 
         activeStreams = new KafkaStreams(topology, props);
         activeStreams.start();
+        persistConfig(config);
+    }
+
+    private void persistConfig(Config config) {
+        try {
+            Files.deleteIfExists(Config.CONFIG_PATH);
+            Files.createFile(Config.CONFIG_PATH);
+            Files.write(Config.CONFIG_PATH, Jsonizer.toJsonFormattedBytes(config));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void preprocess(TopicElasticsearchMapping mapping, Config config) {
+        Stopwatch sw = STATS.startStopwatch();
         if (mapping.configureTimestampInType == null || mapping.configureTimestampInType) {
             String uri = "http://" + Paths.get(config.elasticsearchServer, mapping.elasticsearchIndex, mapping.elasticsearchType);
             String body = TYPE_CONFIG.replace("${TYPE}", mapping.elasticsearchType);
@@ -76,8 +128,10 @@ public class ConfigurableStreams {
                 System.out.println("curl -XPUT -H 'Content-Type: application/json' " + uri + " -d '" + body + "'");
                 HttpResponse<String> response = http.send(request, HttpResponse.BodyHandler.asString());
                 System.out.println("Status: " + response.statusCode() + ", body: " + response.body());
+                STATS.recordElapsedTime("configurable.streams.preprocess.ok", sw);
             } catch (IOException | InterruptedException e) {
                 System.out.println("Failed to send type configuration request to " + uri + ", with body: " + body);
+                STATS.recordElapsedTime("configurable.streams.preprocess.failed", sw);
             }
         }
     }
@@ -111,6 +165,7 @@ public class ConfigurableStreams {
     }
 
     private void onRecord(String key, String value, TopicElasticsearchMapping mapping, Config config) {
+        Stopwatch sw = STATS.startStopwatch();
         String uri = "http://" + Paths.get(
                 config.elasticsearchServer,
                 mapping.elasticsearchIndex,
@@ -125,7 +180,9 @@ public class ConfigurableStreams {
             if (response.statusCode() >= 300 || response.statusCode() < 200) {
                 System.out.println("error putting in elasticsearch " + response.statusCode() + " " + response.body());
             }
+            STATS.recordElapsedTime("on.record." + mapping.topic + ".ok", sw);
         } catch (IOException | InterruptedException e) {
+            STATS.recordElapsedTime("on.record." + mapping.topic + ".failed", sw);
             e.printStackTrace();
         }
     }
@@ -140,5 +197,17 @@ public class ConfigurableStreams {
         } else {
             throw new IllegalStateException("unknown strategy" + String.valueOf(mapping.elasticsearchIdStrategy));
         }
+    }
+
+    public Optional<TopologyDescription> getTopologyDescription() {
+        if (topology != null) {
+            return Optional.of(topology.describe());
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    public Config getConfig() {
+        return config;
     }
 }

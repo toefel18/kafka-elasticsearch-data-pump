@@ -10,7 +10,9 @@ module nl.toefel.kafka.elasticsearch.pump {
     requires jdk.incubator.httpclient;
     requires patan;
     requires jackson.annotations;
+    requires jdk.httpserver;
 
     exports nl.toefel.kafka.elasticsearch.pump;
     exports nl.toefel.kafka.elasticsearch.pump.config;
+    exports nl.toefel.kafka.elasticsearch.pump.http;
 }
