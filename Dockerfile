@@ -1,4 +1,4 @@
-FROM 9.0.1-11-jre
+FROM openjdk:9.0.1-11-jre
 
 ADD target/lib modules
 ADD target/kafka-elasticsearch-data-pump-1.0-SNAPSHOT.jar modules/kafka-elasticsearch-data-pump.jar
