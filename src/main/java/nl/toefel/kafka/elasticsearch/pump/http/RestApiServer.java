@@ -18,9 +18,13 @@ public class RestApiServer {
 
     private final ConfigurableStreams streams;
     private HttpServer srv;
+    private int port;
 
-    public RestApiServer(ConfigurableStreams streams) {
+    public RestApiServer(ConfigurableStreams streams, int port) {
+        if (port <= 0 || port > 65535) throw  new IllegalArgumentException("Port number must be in range 1 - 65535, but was " + port);
+        if (streams == null) throw  new IllegalArgumentException("streams is null, REST api cannot configure anything");
         this.streams = streams;
+        this.port = port;
         try {
             this.srv = HttpServer.create();
         } catch (IOException e) {
@@ -30,8 +34,9 @@ public class RestApiServer {
 
     public void start() {
         try {
-            System.out.println("Starting HTTP server");
-            srv.bind(new InetSocketAddress(8080), 0);
+            System.out.println("Starting HTTP server at port " + port);
+
+            srv.bind(new InetSocketAddress(port), 0);
             srv.createContext("/configuration", this::handleConfig);
             srv.createContext("/topology", this::handleTopology);
             srv.setExecutor(null);

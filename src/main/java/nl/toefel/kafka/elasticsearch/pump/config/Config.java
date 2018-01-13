@@ -4,16 +4,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author Christophe Hesters
  */
 public class Config {
-    public static final Path CONFIG_PATH = Paths.get(System.getProperty("user.home"), ".kafka-elasticsearch-data-pump", "config.json");
+    public static final Path CONFIG_PATH = Paths.get(System.getProperty("user.home"), ".kafka-elasticsearch-data-pump-config.json");
 
     public String kafkaConsumerGroupId;
     public String kafkaBootstrapServers;
@@ -21,9 +18,13 @@ public class Config {
     public List<TopicElasticsearchMapping> topicMappings;
 
     public static Config newEmpty() {
-        Config cfg = new Config();
-        cfg.topicMappings = new ArrayList<>();
-        return cfg;
+        return new Config();
+    }
+
+    @JsonIgnore
+    public boolean isEmpty() {
+        List<Object> fields = Arrays.asList(kafkaBootstrapServers, kafkaConsumerGroupId, elasticsearchServer, topicMappings);
+        return fields.stream().allMatch(Objects::isNull);
     }
 
     @JsonIgnore

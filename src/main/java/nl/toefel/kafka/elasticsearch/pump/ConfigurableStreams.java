@@ -74,8 +74,13 @@ public class ConfigurableStreams {
 
     private void reconfigureStreamsImpl(Config config) {
         System.out.println("Using config: \n" + Jsonizer.toJsonFormatted(config));
+        if (config.isEmpty()) {
+            System.out.println("Config is empty, not starting any streams");
+            return;
+        }
         if (!config.isValid()) {
             System.out.println("Not altering config due to invalid parameters");
+            return;
         }
         if (activeStreams != null) {
             System.out.println("Closing active streams");
@@ -101,12 +106,15 @@ public class ConfigurableStreams {
         System.out.println(topology.describe());
 
         activeStreams = new KafkaStreams(topology, props);
-        activeStreams.start();
         persistConfig(config);
+        System.out.println("Starting KafkaStreams");
+        activeStreams.start();
+        System.out.println("KafkaStreams Started");
     }
 
     private void persistConfig(Config config) {
         try {
+            System.out.println("Persisting configuration");
             Files.deleteIfExists(Config.CONFIG_PATH);
             Files.createFile(Config.CONFIG_PATH);
             Files.write(Config.CONFIG_PATH, Jsonizer.toJsonFormattedBytes(config));
@@ -142,7 +150,7 @@ public class ConfigurableStreams {
             Jsonizer.fromJson(String.valueOf(value));
             return true;
         } catch (Exception e) {
-            System.out.println("Skipping message with invalid JSON key: " + String.valueOf(key) + ", value: " + String.valueOf(value));
+            System.out.println("Skipping message, not valid JSON. key: " + String.valueOf(key) + ", value: " + String.valueOf(value));
             return false;
         }
     }
@@ -156,7 +164,7 @@ public class ConfigurableStreams {
         if (timestamp instanceof Long) {
             parsedJson.put("timestamp", ZonedDateTime.ofInstant(Instant.ofEpochMilli((Long)timestamp), ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
         } else if (timestamp instanceof String) {
-            // nothing ot do
+            // nothing to do
         } else {
             System.out.println("INCOMPATIBLE TIMESTAMP FORMAT " + timestamp);
             parsedJson.put("timestamp", ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
@@ -188,14 +196,18 @@ public class ConfigurableStreams {
     }
 
     private String generateKey(TopicElasticsearchMapping mapping, String key) {
-        if (mapping.elasticsearchIdStrategy == null || "random".equalsIgnoreCase(mapping.elasticsearchIdStrategy.trim())) {
+        if (mapping.elasticsearchIdStrategy == null || "auto".equalsIgnoreCase(mapping.elasticsearchIdStrategy)){
+            // https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html#_automatic_id_generation
+            return ""; // this will PUT on /, causing Elasticsearch to automatically determine ID.
+        } else if ("random".equalsIgnoreCase(mapping.elasticsearchIdStrategy.trim())) {
             return UUID.randomUUID().toString();
-        } else if ("fromfield".equalsIgnoreCase(mapping.elasticsearchIdStrategy.trim())) {
+        } else if ("fromField".equalsIgnoreCase(mapping.elasticsearchIdStrategy.trim())) {
             throw new IllegalStateException("not implemented, but would get key from " + String.valueOf(mapping.idFromField));
         } else if ("fromKey".equalsIgnoreCase(mapping.elasticsearchIdStrategy.trim())) {
             return key;
         } else {
-            throw new IllegalStateException("unknown strategy" + String.valueOf(mapping.elasticsearchIdStrategy));
+            System.out.println("unknown strategy " + String.valueOf(mapping.elasticsearchIdStrategy) + ", defaulting to auto");
+            return "";
         }
     }
 
