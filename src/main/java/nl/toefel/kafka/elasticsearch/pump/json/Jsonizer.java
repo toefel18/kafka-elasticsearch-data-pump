@@ -86,4 +86,5 @@ public class Jsonizer {
             throw new IllegalArgumentException(e);
         }
     }
+
 }

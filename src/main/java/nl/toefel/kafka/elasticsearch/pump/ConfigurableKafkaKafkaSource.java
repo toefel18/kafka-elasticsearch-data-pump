@@ -30,7 +30,8 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * @author Christophe Hesters
  */
-public class ConfigurableStreams {
+@Deprecated() // Does not support older kafka versions and does not play wel with .NET and Golang clients missing timestamps
+public class ConfigurableKafkaKafkaSource implements kafka.ConfigurableKafkaSource {
 
     private static final String TYPE_CONFIG = "{\"mappings\":{\"${TYPE}\":{\"properties\":{\"timestamp\":{\"type\":\"date\"}}}}}";
 
@@ -46,7 +47,8 @@ public class ConfigurableStreams {
      * @param config
      * @return true if successful, false if a reconfiguration was already in progress.
      */
-    public boolean reconfigureStreamsOrCancel(Config config) {
+    @Override
+    public boolean reconfigureOrCancel(Config config) {
         if (lock.tryLock()) {
             try {
                 reconfigureStreamsImpl(config);
@@ -63,7 +65,8 @@ public class ConfigurableStreams {
      * Reconfigures the streams or waits until streams is ready if a configuration is already in progress.
      * @param config
      */
-    public void reconfigureStreamsOrWait(Config config) {
+    @Override
+    public void reconfigureOrWait(Config config) {
         lock.lock();
         try {
             reconfigureStreamsImpl(config);
@@ -144,17 +147,6 @@ public class ConfigurableStreams {
         }
     }
 
-    //TODO optimize double json parsing
-    private boolean validJsonValues(Object key, Object value) {
-        try {
-            Jsonizer.fromJson(String.valueOf(value));
-            return true;
-        } catch (Exception e) {
-            System.out.println("Skipping message, not valid JSON. key: " + String.valueOf(key) + ", value: " + String.valueOf(value));
-            return false;
-        }
-    }
-
     private KeyValue<Object, String> insertTimestamp(Object key, Object val) {
         Map<String, Object> parsedJson = Jsonizer.fromJson(String.valueOf(val));
         Object timestamp = parsedJson.get("timestamp");
@@ -219,6 +211,7 @@ public class ConfigurableStreams {
         }
     }
 
+    @Override
     public Config getConfig() {
         return config;
     }

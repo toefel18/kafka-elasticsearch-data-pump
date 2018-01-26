@@ -2,28 +2,26 @@ package nl.toefel.kafka.elasticsearch.pump.http;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import nl.toefel.kafka.elasticsearch.pump.ConfigurableStreams;
+import nl.toefel.kafka.elasticsearch.pump.ConfigurableKafkaSource;
 import nl.toefel.kafka.elasticsearch.pump.config.Config;
 import nl.toefel.kafka.elasticsearch.pump.json.Jsonizer;
-import org.apache.kafka.streams.TopologyDescription;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Optional;
 
 /**
  * @author Christophe Hesters
  */
 public class RestApiServer {
 
-    private final ConfigurableStreams streams;
+    private final ConfigurableKafkaSource kafkaSource;
     private HttpServer srv;
     private int port;
 
-    public RestApiServer(ConfigurableStreams streams, int port) {
+    public RestApiServer(ConfigurableKafkaSource kafkaSource, int port) {
         if (port <= 0 || port > 65535) throw  new IllegalArgumentException("Port number must be in range 1 - 65535, but was " + port);
-        if (streams == null) throw  new IllegalArgumentException("streams is null, REST api cannot configure anything");
-        this.streams = streams;
+        if (kafkaSource == null) throw  new IllegalArgumentException("kafkaSource is null, REST api cannot configure anything");
+        this.kafkaSource = kafkaSource;
         this.port = port;
         try {
             this.srv = HttpServer.create();
@@ -38,7 +36,7 @@ public class RestApiServer {
 
             srv.bind(new InetSocketAddress(port), 0);
             srv.createContext("/configuration", this::handleConfig);
-            srv.createContext("/topology", this::handleTopology);
+//            srv.createContext("/topology", this::handleTopology);
             srv.setExecutor(null);
             srv.start();
             System.out.println("Started HTTP server");
@@ -47,34 +45,20 @@ public class RestApiServer {
         }
     }
 
-    private void handleTopology(HttpExchange httpExchange) {
-        Optional<TopologyDescription> topo = streams.getTopologyDescription();
-        byte[] description = String.valueOf(topo.isPresent() ? topo.get() : "Not found").getBytes();
-        try {
-            httpExchange.getResponseHeaders().add("Content-Type", "application/json");
-            httpExchange.sendResponseHeaders(topo.isPresent() ? 200 : 404, description.length);
-            httpExchange.getResponseBody().write(description);
-            httpExchange.getResponseBody().flush();
-            httpExchange.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     private void handleConfig(HttpExchange httpExchange) {
         if (!httpExchange.getRequestURI().getPath().equalsIgnoreCase("/configuration")){
             respond(httpExchange, 404, Response.newError("Invalid URI, use /configuration", null));
         } else if ("GET".equalsIgnoreCase(httpExchange.getRequestMethod())) {
-            respond(httpExchange, 200, Response.newOk("Listing current config", streams.getConfig()));
+            respond(httpExchange, 200, Response.newOk("Listing current config", kafkaSource.getConfig()));
         } else if ("PUT".equalsIgnoreCase(httpExchange.getRequestMethod())) {
             try {
                 Config newConfig = Jsonizer.fromJson(httpExchange.getRequestBody(), Config.class);
                 if (!newConfig.isValid()) {
                     respond(httpExchange, 400, Response.newError("Invalid configuration, required fields: " + Config.requiredFieldsToBeValid(), newConfig));
-                } else if (streams.reconfigureStreamsOrCancel(newConfig)) {
-                    respond(httpExchange, 202, Response.newOk("Streams are reconfiguring, this can take a while", streams.getConfig()));
+                } else if (kafkaSource.reconfigureOrCancel(newConfig)) {
+                    respond(httpExchange, 202, Response.newOk("Streams are reconfiguring, this can take a while", kafkaSource.getConfig()));
                 } else {
-                    respond(httpExchange, 503, Response.newOk("Reconfiguration already in progress, this API is unavailable until finished", streams.getConfig()));
+                    respond(httpExchange, 503, Response.newOk("Reconfiguration already in progress, this API is unavailable until finished", kafkaSource.getConfig()));
                 }
             } catch (IllegalArgumentException e) {
                 respond(httpExchange, 400, Response.newError("Error parsing JSON body as a valid configuration: " + e.getMessage(), null));

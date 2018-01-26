@@ -15,4 +15,6 @@ module nl.toefel.kafka.elasticsearch.pump {
     exports nl.toefel.kafka.elasticsearch.pump;
     exports nl.toefel.kafka.elasticsearch.pump.config;
     exports nl.toefel.kafka.elasticsearch.pump.http;
+    exports nl.toefel.kafka.elasticsearch.pump.kafka;
+    exports nl.toefel.kafka.elasticsearch.pump.sink;
 }

@@ -47,5 +47,22 @@ the service exposes two resources:
     
 #### Running the image
 
-    docker run -d -p 8080:8080 --name kafka-elasticsearch-data-pump toefel/kafka-elasticsearch-data-pump:v1
+    docker run -d -p 8080:8080 --name kafka-elasticsearch-data-pump toefel/kafka-elasticsearch-data-pump:latest
+   
+#### development set-up
+    
+    # start a single elasticsearch container  
+    docker run -d --name elasticsearch -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:6.1.2
+   
+    # kibana will try to find elasticsearch on  elasticsearch.url http://elasticsearch:9200, so the --link accomplishes that
+    docker run -d --name kibana --link elasticsearch:elasticsearch -p 5601:5601 docker.elastic.co/kibana/kibana:6.1.2
+    
+    # start a development kafka
+    docker run -d --name kafka -p 2181:2181 -p 9092:9092 --env ADVERTISED_HOST=<YOUR MACHINE IP ADDRESS> --env ADVERTISED_PORT=9092 spotify/kafka
+    
+    # start the pump
+    docker run -d --name kafka-elasticsearch-data-pump -p 8080:8080 toefel/kafka-elasticsearch-data-pump:latest
+    
+    # use example-config.json as a base, and fill in the correct numbers!
+    # elasticsearchServer and kafkaBootstrapServers must be reachable from within the pump container 
     
