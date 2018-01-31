@@ -8,42 +8,54 @@
       "elasticsearchIndex": "kafka-topics-flow-unit-status",
       "elasticsearchType": "flow-unit-status",
       "elasticsearchIdStrategy": "auto",
-      "configureTimestampInType": true
+      "addKafkaMetaData": true,
+      "configureTimestampInType": true,
+      "logCurlCommands": "always"
     },
     {
       "topic": "flow-trip-mutations",
       "elasticsearchIndex": "kafka-topics-flow-trip-mutations",
       "elasticsearchType": "flow-trip-mutations",
       "elasticsearchIdStrategy": "auto",
-      "configureTimestampInType": true
+      "addKafkaMetaData": true,
+      "configureTimestampInType": true,
+      "logCurlCommands": "always"
     },
     {
       "topic": "flow-to-be-planned-shipments",
       "elasticsearchIndex": "kafka-topics-flow-to-be-planned-shipments",
       "elasticsearchType": "flow-to-be-planned-shipments",
       "elasticsearchIdStrategy": "auto",
-      "configureTimestampInType": true
+      "addKafkaMetaData": true,
+      "configureTimestampInType": true,
+      "logCurlCommands": "always"
     },
     {
       "topic": "flow-loaded-trips",
       "elasticsearchIndex": "kafka-topics-flow-loaded-trips",
       "elasticsearchType": "flow-loaded-trips",
       "elasticsearchIdStrategy": "auto",
-      "configureTimestampInType": true
+      "addKafkaMetaData": true,
+      "configureTimestampInType": true,
+      "logCurlCommands": "always"
     },
     {
       "topic": "flow-released-trips",
       "elasticsearchIndex": "kafka-topics-flow-released-trips",
       "elasticsearchType": "flow-released-trips",
       "elasticsearchIdStrategy": "auto",
-      "configureTimestampInType": true
+      "addKafkaMetaData": true,
+      "configureTimestampInType": true,
+      "logCurlCommands": "always"
     },
     {
       "topic": "flow-ht-events",
       "elasticsearchIndex": "kafka-topics-flow-ht-events",
       "elasticsearchType": "flow-ht-events",
       "elasticsearchIdStrategy": "auto",
-      "configureTimestampInType": true
+      "addKafkaMetaData": true,
+      "configureTimestampInType": true,
+      "logCurlCommands": "always"
     }
   ]
 }

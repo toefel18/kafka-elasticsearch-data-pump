@@ -4,6 +4,7 @@ import nl.toefel.kafka.elasticsearch.pump.config.Config;
 import nl.toefel.kafka.elasticsearch.pump.json.Jsonizer;
 import nl.toefel.kafka.elasticsearch.pump.kafka.KafkaStringConsumer;
 import nl.toefel.kafka.elasticsearch.pump.sink.ElasticsearchBulkHttpSink;
+import nl.toefel.kafka.elasticsearch.pump.sink.ElasticsearchIdFactory;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -63,9 +64,8 @@ public class ConfigurableStringConsumer implements ConfigurableKafkaSource {
         }
         oneTryConsumer.ifPresent(consumer -> consumer.stopSync(5, TimeUnit.SECONDS));
         cfg = config;
-        KafkaStringConsumer.newStartedConsumer(cfg, new ElasticsearchBulkHttpSink(cfg));
+        oneTryConsumer = Optional.of(KafkaStringConsumer.newStartedConsumer(cfg, new ElasticsearchBulkHttpSink(cfg, new ElasticsearchIdFactory())));
     }
-
 
     @Override
     public Config getConfig() {
@@ -75,5 +75,9 @@ public class ConfigurableStringConsumer implements ConfigurableKafkaSource {
         } finally {
             lock.unlock();
         }
+    }
+
+    public void registerShutdownHook() {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> oneTryConsumer.ifPresent(consumer -> consumer.stopSync(5, TimeUnit.SECONDS))));
     }
 }

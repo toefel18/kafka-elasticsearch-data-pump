@@ -19,7 +19,9 @@ public class Main {
             cfg = Jsonizer.fromJson(Files.readAllBytes(Config.CONFIG_PATH), Config.class);
         }
 
-        ConfigurableKafkaSource kafkaSource = new ConfigurableStringConsumer();
+        ConfigurableStringConsumer kafkaSource = new ConfigurableStringConsumer();
+        kafkaSource.registerShutdownHook();
+
 
         // port cannot be part of Config, because the REST server receives the config.
         // the dockerfile also maps this port, changing it would render the service unreachable outside the docker network.

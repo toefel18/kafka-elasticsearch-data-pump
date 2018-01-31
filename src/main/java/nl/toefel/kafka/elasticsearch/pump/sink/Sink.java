@@ -4,5 +4,5 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 public interface Sink {
 
-    void process(ConsumerRecords<String, String> batch) throws RetryException;
+    void process(ConsumerRecords<String, String> batch);
 }

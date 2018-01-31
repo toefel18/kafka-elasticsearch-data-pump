@@ -10,7 +10,8 @@ public class TopicElasticsearchMapping {
     public String elasticsearchIndex;
     public String elasticsearchType;
     public String elasticsearchIdStrategy;
-    public Optional<IdFromFieldInMessageKeyStrategy> idFromField;
+    public Boolean addKafkaMetaData;
+    public Optional<String> pathToIdInMessage;
     public Boolean configureTimestampInType;
-
+    public String logCurlCommands;
 }

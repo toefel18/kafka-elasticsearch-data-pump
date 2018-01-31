@@ -9,6 +9,8 @@ import nl.toefel.kafka.elasticsearch.pump.json.Jsonizer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
+import static nl.toefel.kafka.elasticsearch.pump.statistics.Statistics.STATS;
+
 /**
  * @author Christophe Hesters
  */
@@ -19,8 +21,10 @@ public class RestApiServer {
     private int port;
 
     public RestApiServer(ConfigurableKafkaSource kafkaSource, int port) {
-        if (port <= 0 || port > 65535) throw  new IllegalArgumentException("Port number must be in range 1 - 65535, but was " + port);
-        if (kafkaSource == null) throw  new IllegalArgumentException("kafkaSource is null, REST api cannot configure anything");
+        if (port <= 0 || port > 65535)
+            throw new IllegalArgumentException("Port number must be in range 1 - 65535, but was " + port);
+        if (kafkaSource == null)
+            throw new IllegalArgumentException("kafkaSource is null, REST api cannot configure anything");
         this.kafkaSource = kafkaSource;
         this.port = port;
         try {
@@ -36,7 +40,7 @@ public class RestApiServer {
 
             srv.bind(new InetSocketAddress(port), 0);
             srv.createContext("/configuration", this::handleConfig);
-//            srv.createContext("/topology", this::handleTopology);
+            srv.createContext("/statistics", this::handleStats);
             srv.setExecutor(null);
             srv.start();
             System.out.println("Started HTTP server");
@@ -46,7 +50,7 @@ public class RestApiServer {
     }
 
     private void handleConfig(HttpExchange httpExchange) {
-        if (!httpExchange.getRequestURI().getPath().equalsIgnoreCase("/configuration")){
+        if (!httpExchange.getRequestURI().getPath().equalsIgnoreCase("/configuration")) {
             respond(httpExchange, 404, Response.newError("Invalid URI, use /configuration", null));
         } else if ("GET".equalsIgnoreCase(httpExchange.getRequestMethod())) {
             respond(httpExchange, 200, Response.newOk("Listing current config", kafkaSource.getConfig()));
@@ -68,11 +72,23 @@ public class RestApiServer {
         }
     }
 
+    private void handleStats(HttpExchange httpExchange) {
+        if (!httpExchange.getRequestURI().getPath().equalsIgnoreCase("/statistics")) {
+            respond(httpExchange, 404, Response.newError("Invalid URI, use /statistics", null));
+        } else if ("GET".equalsIgnoreCase(httpExchange.getRequestMethod())) {
+            respond(httpExchange, 200, Jsonizer.toJsonFormattedBytes(STATS.engine.getSnapshot()));
+        } else if ("DELETE".equalsIgnoreCase(httpExchange.getRequestMethod())) {
+            respond(httpExchange, 200, Jsonizer.toJsonFormattedBytes(STATS.engine.getSnapshotAndReset()));
+        }
+    }
+
     private void respond(HttpExchange httpExchange, int statusCode, Response response) {
+        respond(httpExchange, statusCode, Jsonizer.toJsonFormattedBytes(response));
+    }
+
+    private void respond(HttpExchange httpExchange, int statusCode, byte[] bytesMessage) {
         System.out.println("responding with " + statusCode + " to " + httpExchange.getRequestMethod() + " " + httpExchange.getRequestURI().getPath());
         try {
-            System.out.println(Jsonizer.toJsonFormatted(response));
-            byte[] bytesMessage = Jsonizer.toJsonFormattedBytes(response);
             httpExchange.getResponseHeaders().add("Content-Type", "application/json");
             httpExchange.sendResponseHeaders(statusCode, bytesMessage.length);
             httpExchange.getResponseBody().write(bytesMessage);
