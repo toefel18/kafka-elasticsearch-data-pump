@@ -140,10 +140,10 @@ public class ElasticsearchBulkHttpSink implements Sink {
                 retryCurl = "\n - manual retry: " + toCurlCommand(request, json);
             }
             System.out.println("http error status=" + response.statusCode() + ", body=" + response.body() + retryCurl);
-            STATS.engine.addOccurrence("elasticsearch.bulk.http.sink.httpcall" + request.method() + ".failed");
-            STATS.engine.addOccurrence("elasticsearch.bulk.http.sink.httpcall" + request.method() + ".failed." + response.statusCode());
+            STATS.engine.addOccurrence("elasticsearch.bulk.http.sink.httpcall." + request.method() + ".failed");
+            STATS.engine.addOccurrence("elasticsearch.bulk.http.sink.httpcall." + request.method() + ".failed." + response.statusCode());
         } else {
-            STATS.engine.addOccurrence("elasticsearch.bulk.http.sink.httpcall" + request.method() + ".ok");
+            STATS.engine.addOccurrence("elasticsearch.bulk.http.sink.httpcall." + request.method() + ".ok");
         }
     }
 
