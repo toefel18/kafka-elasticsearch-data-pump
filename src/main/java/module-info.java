@@ -1,5 +1,4 @@
 module nl.toefel.kafka.elasticsearch.pump {
-    requires kafka.streams;
     requires kafka.clients;
     requires com.fasterxml.jackson.databind;
     requires org.slf4j;

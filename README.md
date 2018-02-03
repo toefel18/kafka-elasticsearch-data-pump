@@ -132,9 +132,9 @@ the service exposes two resources:
 
     mvn clean install
     docker build -t toefel/kafka-elasticsearch-data-pump:latest .
-    docker push
+    docker push toefel/kafka-elasticsearch-data-pump:latest
     
 #### Running the image
 
     docker run -d -p 8080:8080 --name kafka-elasticsearch-data-pump toefel/kafka-elasticsearch-data-pump:latest
-   
+   doc
