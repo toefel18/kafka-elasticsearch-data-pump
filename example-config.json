@@ -2,6 +2,7 @@
   "elasticsearchServer": "127.0.0.1:9200",
   "kafkaBootstrapServers": "localhost:9092",
   "kafkaConsumerGroupId": "some-random-id-16",
+  "kafkaAutoOffsetReset": "earliest",
   "topicMappings": [
     {
       "topic": "flow-unit-status",
