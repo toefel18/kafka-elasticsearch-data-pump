@@ -22,22 +22,28 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.*;
 import static nl.toefel.kafka.elasticsearch.pump.statistics.Statistics.STATS;
 
 public class ElasticsearchBulkHttpSink implements Sink {
 
     private final HttpClient http = HttpClient.newHttpClient();
     private final Config config;
-    private final Map<String, TopicElasticsearchMapping> mappingByTopic;
-    private final Map<String, ElasticsearchRecordIdStrategy> idStrategyByTopic;
+    private final Map<String, List<TopicElasticsearchMapping>> mappingsByTopic;
+    private final Map<TopicElasticsearchMapping, ElasticsearchRecordIdStrategy> idStrategyByTopic;
 
     public ElasticsearchBulkHttpSink(Config config, ElasticsearchIdFactory idFactory) {
         this.config = config;
-        this.mappingByTopic = this.config.topicMappings.stream().collect(toMap(x -> x.topic, Function.identity()));
-        this.idStrategyByTopic = this.config.topicMappings.stream().collect(toMap(x -> x.topic, idFactory::getStrategy));
+        this.mappingsByTopic = this.config.topicMappings.stream().collect(groupingBy(x -> x.topic));
+        this.idStrategyByTopic = this.config.topicMappings.stream().collect(toMap(Function.identity(), idFactory::getStrategy));
+
+        this.mappingsByTopic.entrySet().forEach(
+                e -> System.out.printf("Configured mapping from topic %s to elasticsearch indexes %s\n",
+                        e.getKey(),
+                        e.getValue().stream().map(m -> m.elasticsearchIndex + "/" + m.elasticsearchType).collect(Collectors.joining(", "))));
+
     }
 
     @Override
@@ -47,8 +53,8 @@ public class ElasticsearchBulkHttpSink implements Sink {
 
             recordBatchByTopic.keySet()
                     .stream()
-                    .filter(mappingByTopic::containsKey) // defensively filter any topics for which we do not have a mapping
-                    .forEach(topic -> sendToElasticsearch(mappingByTopic.get(topic), recordBatchByTopic.get(topic)));
+                    .filter(mappingsByTopic::containsKey) // defensively filter any topics for which we do not have a mapping
+                    .forEach(topic -> sendToElasticsearch(mappingsByTopic.get(topic), recordBatchByTopic.get(topic)));
         });
     }
 
@@ -61,23 +67,26 @@ public class ElasticsearchBulkHttpSink implements Sink {
         return records.stream().collect(groupingBy(ConsumerRecord::topic));
     }
 
-    private void sendToElasticsearch(TopicElasticsearchMapping mappingConfig, List<ConsumerRecord<String, String>> consumerRecords) {
-        STATS.engine.addOccurrence("elasticsearch.bulk.http.sink.send.to.elasticsearch.topic." + mappingConfig.topic);
+    private void sendToElasticsearch(List<TopicElasticsearchMapping> mappingConfigs, List<ConsumerRecord<String, String>> consumerRecords) {
         for (ConsumerRecord<String, String> record : consumerRecords) {
-            STATS.engine.recordElapsedTime("elasticsearch.bulk.http.sink.process.single", () -> {
-                try {
-                    Map<String, Object> parsedRecord = Jsonizer.fromJson(record.value());
-                    parsedRecord = unifyTimestamps(parsedRecord);
-                    if (Boolean.TRUE.equals(mappingConfig.addKafkaMetaData)) {
-                        parsedRecord = insertKafkaRecordFieldsAsMeta(parsedRecord, record);
+            STATS.engine.addOccurrence("kafka.record.from.topic." + record.topic());
+            for (TopicElasticsearchMapping mappingConfig : mappingConfigs) {
+                STATS.engine.addOccurrence("elasticsearch.bulk.http.sink.send.to.elasticsearch.topic." + mappingConfig.topic);
+                STATS.engine.recordElapsedTime("elasticsearch.bulk.http.sink.process.single", () -> {
+                    try {
+                        Map<String, Object> parsedRecord = Jsonizer.fromJson(record.value());
+                        parsedRecord = unifyTimestamps(parsedRecord);
+                        if (Boolean.TRUE.equals(mappingConfig.addKafkaMetaData)) {
+                            parsedRecord = insertKafkaRecordFieldsAsMeta(parsedRecord, record);
+                        }
+                        ElasticsearchRecordIdStrategy idStrategy = idStrategyByTopic.get(mappingConfig);
+                        String json = Jsonizer.toJsonMinified(parsedRecord);
+                        http(mappingConfig, idStrategy.getElkHttpMethod(), idStrategy.getElasticSearchId(record), json);
+                    } catch (Exception e) {
+                        System.out.printf("Error %s: %s, skipping message: %s", e.getClass().getName(), e.getMessage(), record.value());
                     }
-                    ElasticsearchRecordIdStrategy idStrategy = idStrategyByTopic.get(mappingConfig.topic);
-                    String json = Jsonizer.toJsonMinified(parsedRecord);
-                    http(mappingConfig, idStrategy.getElkHttpMethod(), idStrategy.getElasticSearchId(record), json);
-                } catch (Exception e) {
-                    System.out.println("Error transforming to json, skipping record: " + record.value());
-                }
-            });
+                });
+            }
         }
     }
 
