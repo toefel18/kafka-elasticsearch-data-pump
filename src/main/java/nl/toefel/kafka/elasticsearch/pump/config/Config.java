@@ -15,6 +15,7 @@ public class Config {
     public String kafkaConsumerGroupId;
     public String kafkaBootstrapServers;
     public String elasticsearchServer;
+    public String kafkaAutoOffsetReset;
     public List<TopicElasticsearchMapping> topicMappings;
 
     public static Config newEmpty() {
@@ -40,7 +41,7 @@ public class Config {
         return Arrays.asList("elasticsearchServer", "kafkaConsumerGroupId", "kafkaBootstrapServers", "topicMappings");
     }
 
-    private static final boolean valid(String name, Object actual) {
+    private static boolean valid(String name, Object actual) {
         boolean emptyString = actual instanceof String && ((String) actual).isEmpty();
         boolean emptyCollection = actual instanceof Collection && ((Collection) actual).isEmpty();
         if (actual == null || emptyString || emptyCollection) {

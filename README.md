@@ -100,6 +100,7 @@ the service exposes two resources:
           "kafkaConsumerGroupId" : "kafka-elasticsearch-data-pump-1",  // the kafka-consumer-group to use
           "kafkaBootstrapServers" : "<YOUR MACHINE IP ADDRESS>:9092",  // kafka address, comma separated list host:port 
           "elasticsearchServer" : "<YOUR MACHINE IP ADDRESS>:9200",    // an elasticsearch server address, single item!
+          "kafkaAutoOffsetReset": "earliest",                          // where to start consuming from kafka (default = earliest)
           "topicMappings" : [ {                                        // list of per-topic configurations
             "topic" : "any-topic-you-like",                            // the name of the topic to consume from
             "elasticsearchIndex" : "kafka-topics-data-pump-tester",    // the elasticsearch index to put messages in (created automatically if not exists)
@@ -132,9 +133,9 @@ the service exposes two resources:
 
     mvn clean install
     docker build -t toefel/kafka-elasticsearch-data-pump:latest .
-    docker push
+    docker push toefel/kafka-elasticsearch-data-pump:latest
     
 #### Running the image
 
     docker run -d -p 8080:8080 --name kafka-elasticsearch-data-pump toefel/kafka-elasticsearch-data-pump:latest
-   
+   doc

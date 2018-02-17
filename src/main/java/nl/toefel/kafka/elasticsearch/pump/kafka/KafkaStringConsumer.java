@@ -44,6 +44,7 @@ public class KafkaStringConsumer {
         Properties props = new Properties();
         props.put("bootstrap.servers", cfg.kafkaBootstrapServers);
         props.put("group.id", cfg.kafkaConsumerGroupId);
+        props.put("auto.offset.reset", cfg.kafkaAutoOffsetReset == null ? "earliest" : cfg.kafkaAutoOffsetReset);
         props.put("key.deserializer", StringDeserializer.class.getName());
         props.put("value.deserializer", StringDeserializer.class.getName());
         return new KafkaConsumer<>(props);
